@@ -1,0 +1,8 @@
+{
+	"name": "newconv",
+	"authors": [
+		"David Bennett"
+	],
+	"description": "A @safe @nogc pure nothrow string conversion library for D.",
+	"license": "boost"
+}
