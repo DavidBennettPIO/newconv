@@ -61,13 +61,13 @@ if (isIntegral!(T))
         if (UT.sizeof > 4 && v >= 10000000000U)
         {
             l = (v >= 10000000000000000000U) ? 20 : (v >= 100000000000000000U) ? 19
-            : (v >= 100000000000000000U) ? 18 : (v >= 10000000000000000) ? 17
-            : (v >= 1000000000000000) ? 16 : (v >= 100000000000000) ? 15
-            : (v >= 10000000000000) ? 14 : (v >= 1000000000000) ? 13
-            : (v >= 100000000000) ? 12 : 11;
+                : (v >= 100000000000000000U) ? 18 : (v >= 10000000000000000) ? 17
+                : (v >= 1000000000000000) ? 16 : (v >= 100000000000000) ? 15
+                : (v >= 10000000000000) ? 14 : (v >= 1000000000000) ? 13
+                : (v >= 100000000000) ? 12 : 11;
         } else if (UT.sizeof > 2 && v >= 100000U){
             l = (v >= 1000000000) ? 10 : (v >= 100000000) ? 9
-            : (v >= 10000000) ? 8 : (v >= 1000000) ? 7 : 6;
+                : (v >= 10000000) ? 8 : (v >= 1000000) ? 7 : 6;
         } else {
             l = (v >= 10000) ? 5 : (v >= 1000) ? 4 : 3;
         }
@@ -306,8 +306,7 @@ if (isIntegral!(T))
             assert((cast(input_type)-4294967296).writeCharsTo(buf) == "-4294967296");
             assert((cast(input_type)-9999999999).writeCharsTo(buf) == "-9999999999");
             assert((cast(input_type)-10000000000).writeCharsTo(buf) == "-10000000000");
-            assert((cast(input_type)-9223372036854775807)
-            .writeCharsTo(buf) == "-9223372036854775807");
+            assert((cast(input_type)-9223372036854775807).writeCharsTo(buf) == "-9223372036854775807");
         }
 
         //assert((-9223372036854775808L).writeCharsTo(buf) == "-9223372036854775808");
@@ -338,9 +337,9 @@ if (isSomeChar!T)
     enum dchar replacementDchar = '\uFFFD';
 
     if(
-    (T.sizeof == 1 && input >= 0x80) ||
-    (T.sizeof == 4 && input > 0x10FFFF) ||
-    (T.sizeof >= 2 && (input >= 0xD800 && input <= 0xDFFF))
+        (T.sizeof == 1 && input >= 0x80) ||
+        (T.sizeof == 4 && input > 0x10FFFF) ||
+        (T.sizeof >= 2 && (input >= 0xD800 && input <= 0xDFFF))
     )
     {
         //debug {
@@ -557,6 +556,7 @@ pragma(inline, true) @safe @nogc pure nothrow W[] writeCharsTo(ubyte precision=6
 {
     return writeCharsToSA!(precision, pad_with_zero)(input, buf[0..40]);
 }
+
 @safe @nogc pure nothrow W[] writeCharsToSA(ubyte precision=6, bool pad_with_zero=false, W)(real input, return scope ref W[40] buf)
 //if(isFloatingPoint!(T))
 {
@@ -578,9 +578,6 @@ pragma(inline, true) @safe @nogc pure nothrow W[] writeCharsTo(ubyte precision=6
         return buf[0..3];
     }
 
-    size_t lwr=21;
-    size_t upr=21;
-
     size_t length;
 
     if(f<0.0){
@@ -594,21 +591,10 @@ pragma(inline, true) @safe @nogc pure nothrow W[] writeCharsTo(ubyte precision=6
     left_int = cast(size_t)f;
 
     right_int = (
-    cast(size_t)(
-    (cast(real)f-left_int)*(10^^precision)*2
-    ) + 1
+        cast(size_t)(
+            (cast(real)f-left_int)*(10^^precision)*2
+        ) + 1
     ) >> 1;
-
-    //right_int = cast(size_t)(
-    //    (cast(real)f-left_int)*(10^^(precision+1))
-    //);
-    //
-    //if(right_int % 10 >= 5)
-    //{
-    //	right_int = right_int / 10 + 1;
-    //} else {
-    //    right_int = right_int / 10;
-    //}
 
     if(right_int >= 10^^(precision)){
         left_int++;
@@ -682,15 +668,15 @@ unittest{
     char[32] buf;
 
     pragma(msg,
-    writeCharsTo(0.0, new char[32]), " ",
-    writeCharsTo(0.1, new char[32]), " ",
-    writeCharsTo(1.0, new char[32]), " ",
-    writeCharsTo(10.01, new char[32]), " ",
-    writeCharsTo(1234.1234, new char[32]), " ",
-    writeCharsTo!9(12345678.12345678, new char[32]), " ",
-    writeCharsTo!9(123456789.123456789, new char[32]), " ",
-    writeCharsTo!9(999999999.999999999, new char[32]), " ",
-    writeCharsTo!4(cast(real)999999999.999999999, new char[32])
+        writeCharsTo(0.0, new char[32]), " ",
+        writeCharsTo(0.1, new char[32]), " ",
+        writeCharsTo(1.0, new char[32]), " ",
+        writeCharsTo(10.01, new char[32]), " ",
+        writeCharsTo(1234.1234, new char[32]), " ",
+        writeCharsTo!9(12345678.12345678, new char[32]), " ",
+        writeCharsTo!9(123456789.123456789, new char[32]), " ",
+        writeCharsTo!9(999999999.999999999, new char[32]), " ",
+        writeCharsTo!4(cast(real)999999999.999999999, new char[32])
     );
 
     assert(writeCharsTo(0.0, buf[]) == "0.0");
