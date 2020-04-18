@@ -1,10 +1,15 @@
 module newconv;
 
-import std.traits : isIntegral, isSigned, Unqual, Unsigned, isSomeChar,
-    isSomeString;
+import std.traits : isIntegral, isFloatingPoint, isSigned, Unqual, Unsigned, isSomeChar, isSomeString;
 
-@safe @nogc pure nothrow W[] writeCharsTo(T, W)(T input, scope W[] buf)
-        if (isIntegral!(T))
+pragma(inline, true) W[] writeCharsTo(T, W)(T input, return scope W[] buf) @safe @nogc pure nothrow
+if (isIntegral!(T))
+{
+    return writeCharsToSA(input, buf[0..20]);
+}
+
+W[] writeCharsToSA(T, W)(T input, return scope ref W[20] buf) @safe @nogc pure nothrow
+if (isIntegral!(T))
 {
 
     alias UT = Unqual!T;
@@ -56,13 +61,13 @@ import std.traits : isIntegral, isSigned, Unqual, Unsigned, isSomeChar,
         if (UT.sizeof > 4 && v >= 10000000000U)
         {
             l = (v >= 10000000000000000000U) ? 20 : (v >= 100000000000000000U) ? 19
-                : (v >= 100000000000000000U) ? 18 : (v >= 10000000000000000) ? 17
-                : (v >= 1000000000000000) ? 16 : (v >= 100000000000000) ? 15
-                : (v >= 10000000000000) ? 14 : (v >= 1000000000000) ? 13
-                : (v >= 100000000000) ? 12 : 11;
+            : (v >= 100000000000000000U) ? 18 : (v >= 10000000000000000) ? 17
+            : (v >= 1000000000000000) ? 16 : (v >= 100000000000000) ? 15
+            : (v >= 10000000000000) ? 14 : (v >= 1000000000000) ? 13
+            : (v >= 100000000000) ? 12 : 11;
         } else if (UT.sizeof > 2 && v >= 100000U){
             l = (v >= 1000000000) ? 10 : (v >= 100000000) ? 9
-                : (v >= 10000000) ? 8 : (v >= 1000000) ? 7 : 6;
+            : (v >= 10000000) ? 8 : (v >= 1000000) ? 7 : 6;
         } else {
             l = (v >= 10000) ? 5 : (v >= 1000) ? 4 : 3;
         }
@@ -85,7 +90,15 @@ import std.traits : isIntegral, isSigned, Unqual, Unsigned, isSomeChar,
 
 }
 
-@safe @nogc pure nothrow W[] writeCharsToRTL(T, W)(T input, scope W[] buf)
+W[] writeCharsToPad(T, W)(T input, scope W[] buf, size_t pad) @safe @nogc pure nothrow
+if (isIntegral!(T))
+{
+    buf[0..pad] = '0';
+    input.writeCharsToRTL(buf[0..pad]);
+    return buf[0..pad];
+}
+
+W[] writeCharsToRTL(T, W)(T input, scope W[] buf) @nogc nothrow @safe pure
 if (isIntegral!(T))
 {
 
@@ -126,8 +139,8 @@ if (isIntegral!(T))
                 return buf[$-1 .. $];
             }
         }
-        buf[$-1] = cast(char)((cast(uint) v / 10) + '0');
-        buf[$-2] = cast(char)((cast(uint) v % 10) + '0');
+        buf[$-2] = cast(char)((cast(uint) v / 10) + '0');
+        buf[$-1] = cast(char)((cast(uint) v % 10) + '0');
         if(neg != 0)
         {
             buf[$-3] = '-';
@@ -140,9 +153,9 @@ if (isIntegral!(T))
     static if (UT.sizeof == 1)
     {
         // byte and ubyte can only have 3 digits so we dont need to go any further
-        buf[$-1] = cast(char)(cast(uint) v / 100 + '0');
+        buf[$-3] = cast(char)(cast(uint) v / 100 + '0');
         buf[$-2] = cast(char)(cast(uint) v / 10 % 10 + '0');
-        buf[$-3] = cast(char)(cast(uint) v % 10 + '0');
+        buf[$-1] = cast(char)(cast(uint) v % 10 + '0');
         if(neg != 0)
         {
             buf[$-4] = '-';
@@ -294,7 +307,7 @@ if (isIntegral!(T))
             assert((cast(input_type)-9999999999).writeCharsTo(buf) == "-9999999999");
             assert((cast(input_type)-10000000000).writeCharsTo(buf) == "-10000000000");
             assert((cast(input_type)-9223372036854775807)
-                    .writeCharsTo(buf) == "-9223372036854775807");
+            .writeCharsTo(buf) == "-9223372036854775807");
         }
 
         //assert((-9223372036854775808L).writeCharsTo(buf) == "-9223372036854775808");
@@ -319,88 +332,88 @@ if (isIntegral!(T))
 
 }
 
-// @nogc nothrow
-@safe pure W[] writeCharsTo(T, W)(T input, scope W[] buf)
-        if (isSomeChar!T)
+W[] writeCharsTo(T, W)(T input, scope W[] buf) @nogc nothrow @safe pure
+if (isSomeChar!T)
 {
     enum dchar replacementDchar = '\uFFFD';
 
     if(
-        (T.sizeof == 1 && input >= 0x80) ||
-        (T.sizeof == 4 && input > 0x10FFFF) ||
-        (T.sizeof >= 2 && (input >= 0xD800 && input <= 0xDFFF))
+    (T.sizeof == 1 && input >= 0x80) ||
+    (T.sizeof == 4 && input > 0x10FFFF) ||
+    (T.sizeof >= 2 && (input >= 0xD800 && input <= 0xDFFF))
     )
     {
-        debug {
-            enum error = "Attempted to use an invalid or partual UTF-"~(T.sizeof*8).writeCharsTo(new char[2])~" code point.";
-            assert(0, error);
-        }
+        //debug {
+        //    enum error = "Attempted to use an invalid or partual UTF-"~(T.sizeof*8).writeCharsTo(new char[2])~" code point.";
+        //    assert(0, error);
+        //} else {
         return replacementDchar.writeCharsTo(buf);
+        //}
     }
 
-    import std.utf : encode;
+    //import std.utf : encode;
 
-    static if (W.sizeof == 4)
-    {
-        encode(cast(dchar[1])buf[0..1], cast(dchar)input);
-        return buf[0 .. 1];
-    } else static if(W.sizeof == 2){
-        size_t l = encode(cast(wchar[2])buf[0..2], cast(dchar)input);
-        return buf[0 .. l];
-    } else static if(W.sizeof == 1){
-        size_t l = encode(cast(char[4])buf[0..4], cast(dchar)input);
-        return buf[0 .. l];
-    }
-
-    //// below is a working @nogc nothrow version
-    //
-    //alias UW = Unqual!W;
-    //alias UT = Unqual!T;
-    //alias c = input;
-    //
-    //static if(UW.sizeof < UT.sizeof)
+    //static if (W.sizeof == 4)
     //{
-    //    static if (UW.sizeof == 2)
-    //    {
-    //        if(c > 0xFFFF) // wchar to char[2]
-    //        {
-    //            buf[0] = cast(wchar)((((c - 0x10000) >> 10) & 0x3FF) + 0xD800);
-    //            buf[1] = cast(wchar)(((c - 0x10000) & 0x3FF) + 0xDC00);
-    //            return buf[0 .. 2];
-    //        }
-    //    }
-    //    else
-    //    {
-    //        if(c >= 0x80)
-    //        {
-    //            if (c <= 0x7FF)
-    //            {
-    //                buf[0] = cast(char)(0xC0 | (c >> 6));
-    //                buf[1] = cast(char)(0x80 | (c & 0x3F));
-    //                return buf[0 .. 2];
-    //            }
-    //            if (c <= 0xFFFF)
-    //            {
-    //                buf[0] = cast(char)(0xE0 | (c >> 12));
-    //                buf[1] = cast(char)(0x80 | ((c >> 6) & 0x3F));
-    //                buf[2] = cast(char)(0x80 | (c & 0x3F));
-    //                return buf[0 .. 3];
-    //            }
-    //            if (c <= 0x10FFFF)
-    //            {
-    //                buf[0] = cast(char)(0xF0 | (c >> 18));
-    //                buf[1] = cast(char)(0x80 | ((c >> 12) & 0x3F));
-    //                buf[2] = cast(char)(0x80 | ((c >> 6) & 0x3F));
-    //                buf[3] = cast(char)(0x80 | (c & 0x3F));
-    //                return buf[0 .. 4];
-    //            }
-    //        }
-    //    }
+    //    encode(cast(dchar[1])buf[0..1], cast(dchar)input);
+    //    return buf[0 .. 1];
+    //} else static if(W.sizeof == 2){
+    //    size_t l = encode(cast(wchar[2])buf[0..2], cast(dchar)input);
+    //    return buf[0 .. l];
+    //} else static if(W.sizeof == 1){
+    //    size_t l = encode(cast(char[4])buf[0..4], cast(dchar)input);
+    //    return buf[0 .. l];
     //}
-    //
-    //// T fits in a single W with no conversion needed.
-    //buf[0] = cast(W) c;
-    //return buf[0 .. 1];
+
+    // below is a working @nogc nothrow version
+
+    alias UW = Unqual!W;
+    alias UT = Unqual!T;
+    alias c = input;
+
+    static if(UW.sizeof < UT.sizeof)
+    {
+        static if (UW.sizeof == 2)
+        {
+            if(c > 0xFFFF) // wchar to char[2]
+            {
+                buf[0] = cast(wchar)((((c - 0x10000) >> 10) & 0x3FF) + 0xD800);
+                buf[1] = cast(wchar)(((c - 0x10000) & 0x3FF) + 0xDC00);
+                return buf[0 .. 2];
+            }
+        }
+        else
+        {
+            if(c >= 0x80)
+            {
+                if (c <= 0x7FF)
+                {
+                    buf[0] = cast(char)(0xC0 | (c >> 6));
+                    buf[1] = cast(char)(0x80 | (c & 0x3F));
+                    return buf[0 .. 2];
+                }
+                if (c <= 0xFFFF)
+                {
+                    buf[0] = cast(char)(0xE0 | (c >> 12));
+                    buf[1] = cast(char)(0x80 | ((c >> 6) & 0x3F));
+                    buf[2] = cast(char)(0x80 | (c & 0x3F));
+                    return buf[0 .. 3];
+                }
+                if (c <= 0x10FFFF)
+                {
+                    buf[0] = cast(char)(0xF0 | (c >> 18));
+                    buf[1] = cast(char)(0x80 | ((c >> 12) & 0x3F));
+                    buf[2] = cast(char)(0x80 | ((c >> 6) & 0x3F));
+                    buf[3] = cast(char)(0x80 | (c & 0x3F));
+                    return buf[0 .. 4];
+                }
+            }
+        }
+    }
+
+    // T fits in a single W with no conversion needed.
+    buf[0] = cast(W) c;
+    return buf[0 .. 1];
 
 }
 
@@ -473,8 +486,7 @@ if (isIntegral!(T))
 
 }
 
-// @nogc nothrow
-@safe pure W[] writeCharsTo(T, W)(T[] input, return scope W[] buf)
+W[] writeCharsTo(T, W)(T[] input, return scope W[] buf) @nogc nothrow @safe pure
 if(isSomeChar!T)
 //if(isSomeString!T)
 {
@@ -537,5 +549,197 @@ if(isSomeChar!T)
     //assert("\U00010000\U0010FFFF".writeCharsTo(wbuffer).length == 4 && wbuffer[0 .. 4] == "\U00010000\U0010FFFF");
     //assert("\U00010000\U0010FFFF".writeCharsTo(dbuffer).length == 2 && dbuffer[0 .. 2] == "\U00010000\U0010FFFF");
 
+
+}
+
+pragma(inline, true) @safe @nogc pure nothrow W[] writeCharsTo(ubyte precision=6, bool pad_with_zero=true, W)(real input, return scope W[] buf)
+//if(isFloatingPoint!(T))
+{
+    return writeCharsToSA!(precision, pad_with_zero)(input, buf[0..40]);
+}
+@safe @nogc pure nothrow W[] writeCharsToSA(ubyte precision=6, bool pad_with_zero=false, W)(real input, return scope ref W[40] buf)
+//if(isFloatingPoint!(T))
+{
+    real f = input;
+
+    if(f==0.0){
+        static if(!pad_with_zero){
+            buf[0..3] = "0.0";
+            return buf[0..3];
+        } else {
+            buf[0..2+precision] = '0';
+            buf[1] = '.';
+            return buf[0..2+precision];
+        }
+    }
+
+    if(f!=f){
+        buf[0..3] = "NaN";
+        return buf[0..3];
+    }
+
+    size_t lwr=21;
+    size_t upr=21;
+
+    size_t length;
+
+    if(f<0.0){
+        buf[length++] = '-';
+        f = -f;
+    }
+
+    size_t left_int;
+    size_t right_int;
+
+    left_int = cast(size_t)f;
+
+    right_int = (
+    cast(size_t)(
+    (cast(real)f-left_int)*(10^^precision)*2
+    ) + 1
+    ) >> 1;
+
+    //right_int = cast(size_t)(
+    //    (cast(real)f-left_int)*(10^^(precision+1))
+    //);
+    //
+    //if(right_int % 10 >= 5)
+    //{
+    //	right_int = right_int / 10 + 1;
+    //} else {
+    //    right_int = right_int / 10;
+    //}
+
+    if(right_int >= 10^^(precision)){
+        left_int++;
+        right_int = 0;
+    }
+
+    length += left_int.writeCharsTo(buf[length..length+20]).length;
+
+    buf[length++] = '.';
+
+    if(right_int == 0){
+
+        buf[length++] = '0';
+
+        static if(pad_with_zero){
+            ubyte p = precision-1;
+            while(p--){
+                buf[length++] = '0';
+            }
+        }
+
+    }else if(right_int < 10){
+
+        buf[length++] = cast(char)(cast(uint)right_int + '0');
+
+        static if(pad_with_zero){
+            ubyte p = precision-2;
+            while(p--){
+                buf[length++] = '0';
+            }
+        }
+
+    }else{
+        auto l = length;
+        ubyte p = precision;
+
+        uint c = cast(uint)right_int % 10;
+
+        static if(!pad_with_zero){
+
+            while(c == 0){
+                right_int /= 10;
+                c = cast(uint)right_int % 10;
+                --p;
+            }
+
+        }
+
+
+        length+=p;
+
+        while(--p){
+            buf[l+p] = cast(char)(c + '0');
+
+            right_int /= 10;
+            c = cast(uint)right_int % 10;
+
+        }
+
+        buf[l] = cast(char)(c + '0');
+
+    }
+
+    return buf[0..length];
+
+}
+
+
+unittest{
+
+    char[32] buf;
+
+    pragma(msg,
+    writeCharsTo(0.0, new char[32]), " ",
+    writeCharsTo(0.1, new char[32]), " ",
+    writeCharsTo(1.0, new char[32]), " ",
+    writeCharsTo(10.01, new char[32]), " ",
+    writeCharsTo(1234.1234, new char[32]), " ",
+    writeCharsTo!9(12345678.12345678, new char[32]), " ",
+    writeCharsTo!9(123456789.123456789, new char[32]), " ",
+    writeCharsTo!9(999999999.999999999, new char[32]), " ",
+    writeCharsTo!4(cast(real)999999999.999999999, new char[32])
+    );
+
+    assert(writeCharsTo(0.0, buf[]) == "0.0");
+    assert(writeCharsTo(0.1, buf[]) == "0.1");
+    assert(writeCharsTo(0.01, buf[]) == "0.01");
+    assert(writeCharsTo(1.0, buf[]) == "1.0");
+    assert(writeCharsTo(1.1, buf[]) == "1.1");
+    assert(writeCharsTo(10.01, buf[]) == "10.01");
+    assert(writeCharsTo(1.234, buf[]) == "1.234");
+    assert(writeCharsTo(1234.1234, buf[]) == "1234.1234");
+    assert(writeCharsTo!9(12345678.12345678, buf[]) == "12345678.12345678");
+    assert(writeCharsTo!9(cast(real)123456789.123456789, buf[]) == "123456789.123456789");
+    assert(writeCharsTo!9(cast(real)999999999.999999999, buf[]) == "999999999.999999999");
+
+    assert(writeCharsTo(-0.0, buf) == "0.0");
+    assert(writeCharsTo(-0.1, buf) == "-0.1");
+    assert(writeCharsTo(-0.01, buf) == "-0.01");
+    assert(writeCharsTo(-1.0, buf) == "-1.0");
+    assert(writeCharsTo(-1.1, buf) == "-1.1");
+    assert(writeCharsTo(-10.01, buf) == "-10.01");
+    assert(writeCharsTo(-1.234, buf) == "-1.234");
+    assert(writeCharsTo(-1234.1234, buf) == "-1234.1234");
+    assert(writeCharsTo!9(-12345678.12345678, buf) == "-12345678.12345678");
+    assert(writeCharsTo!9(cast(real)-123456789.123456789, buf) == "-123456789.123456789");
+    assert(writeCharsTo!9(cast(real)-999999999.999999999, buf) == "-999999999.999999999");
+
+    assert(writeCharsTo!4(0.0, buf) == "0.0");
+    assert(writeCharsTo!4(0.1, buf) == "0.1");
+    assert(writeCharsTo!4(0.01, buf) == "0.01");
+    assert(writeCharsTo!4(1.0, buf) == "1.0");
+    assert(writeCharsTo!4(1.1, buf) == "1.1");
+    assert(writeCharsTo!4(10.01, buf) == "10.01");
+    assert(writeCharsTo!4(1.234, buf) == "1.234");
+    assert(writeCharsTo!4(1234.1234, buf) == "1234.1234");
+
+    assert(writeCharsTo!4(12345678.12345678, buf) == "12345678.1235");
+    assert(writeCharsTo!4(cast(real)123456789.123456789, buf) == "123456789.1235");
+    assert(writeCharsTo!4(cast(real)999999999.999999999, buf) == "1000000000.0");
+
+    assert(writeCharsTo!4(-0.0, buf) == "0.0");
+    assert(writeCharsTo!4(-0.1, buf) == "-0.1");
+    assert(writeCharsTo!4(-0.01, buf) == "-0.01");
+    assert(writeCharsTo!4(-1.0, buf) == "-1.0");
+    assert(writeCharsTo!4(-1.1, buf) == "-1.1");
+    assert(writeCharsTo!4(-10.01, buf) == "-10.01");
+    assert(writeCharsTo!4(-1.234, buf) == "-1.234");
+    assert(writeCharsTo!4(-1234.1234, buf) == "-1234.1234");
+    assert(writeCharsTo!4(-12345678.12345678, buf) == "-12345678.1235");
+    assert(writeCharsTo!4(cast(real)-123456789.123456789, buf) == "-123456789.1235");
+    assert(writeCharsTo!4(cast(real)-999999999.999999999, buf) == "-1000000000.0");
 
 }
